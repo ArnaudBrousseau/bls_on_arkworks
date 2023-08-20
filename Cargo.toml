@@ -1,0 +1,20 @@
+[package]
+name = "bls_on_arkworks"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-ff = { version = "0.4.2" }
+ark-bls12-381 = { version = "0.4.0" }
+ark-std = { version = "0.4.0" }
+ark-ec = { version = "0.4.2" }
+hmac = { version = "0.12.1" }
+sha2 = { version = "0.10.6" }
+hkdf = { version = "0.12.3" }
+num-bigint = { version = "0.4.3" }
+ark-serialize = { version = "0.4.2" }
+
+[dev-dependencies]
+rand_core = {version = "0.6.4", features = ["getrandom"] }
+hex = { version = "0.4.3" }
+hex-literal = { version = "0.4.1" }

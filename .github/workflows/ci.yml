@@ -1,0 +1,32 @@
+name: Rust CI
+
+on:
+  push:
+
+jobs:
+  lints_n_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Toolchain
+        run: |
+          rustup update
+          rustup component add clippy
+          rustup install nightly          
+
+      - name: Toolchain Info
+        run: |
+          cargo --version --verbose
+          rustc --version
+          cargo clippy --version          
+
+      - name: Lint
+        run: |
+          cargo fmt -- --check
+          cargo clippy -- -D warnings          
+
+      - name: Run Tests
+        run: |
+          cargo check
+          cargo test --all          
