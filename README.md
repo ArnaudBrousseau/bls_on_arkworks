@@ -1,5 +1,7 @@
 # BLS on Arkworks
 
+[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE) [![crates.io](https://img.shields.io/crates/v/bls_on_arkworks.svg)](https://crates.io/crates/bls_on_arkworks) [![Documentation](https://docs.rs/bls_on_arkworks/badge.svg)](https://docs.rs/bls_on_arkworks)
+
 This crate implements the latest IRTF draft for BLS signatures: [`draft-irtf-cfrg-bls-signature-05`](https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html) with the [Arkworks crates](https://github.com/arkworks-rs/).
 
 ## Goals
