@@ -1,3 +1,4 @@
+//! Types and type aliases for BLS operations.
 use ark_bls12_381::g1::Config as G1Config;
 use ark_bls12_381::g2::Config as G2Config;
 use ark_bls12_381::Fq2;
@@ -8,23 +9,29 @@ use hmac::Hmac;
 use num_bigint::BigInt;
 use sha2::Sha256;
 
+/// Type alias for BLS' base field
 pub type BLSFr = Fr;
+/// Type alias for `Fq`, a field holding elements with a coefficient in [`BLSFr`]
 pub type BLSFq = Fq;
+/// Type alias for `Fq2`, a field representing a set of polynomials with 2 coefficients in [`BLSFq`]
 pub type BLSFq2 = Fq2;
 
-// Type aliases for G1 and G2 points
+/// Represents a point in G1 (affine coordinates)
 pub type G1AffinePoint = Affine<G1Config>;
+/// Represents a point in G2 (affine coordinates)
 pub type G2AffinePoint = Affine<G2Config>;
+/// Represents a point in G1 (projective coordinates)
 pub type G1ProjectivePoint = Projective<G1Config>;
+/// Represents a point in G2 (projective coordinates)
 pub type G2ProjectivePoint = Projective<G2Config>;
 
 /// Type representing the result of a pairing
 pub type BLS12381Pairing = PairingOutput<Bls12_381>;
 
-// The spec often talks about "octets strings". We alias Vec<u8> to have the code read closer to the spec
+/// The spec often talks about "octets strings". We alias `Vec<u8>` to have the code read closer to the spec.
 pub type Octets = Vec<u8>;
 
-/// A secret key is just a BigInt
+/// A secret key is just a `BigInt`
 pub type SecretKey = BigInt;
 
 /// Represents a point in G1
@@ -38,24 +45,25 @@ pub type Signature = Octets;
 /// Our hash function of choice is SHA-256
 pub type BLSHmac = Hmac<Sha256>;
 
-/// Error enum to wrap underlying failures in BLS operations, or wrapping errors
-/// coming from this crate's dependencies.
+/// Error enum to wrap underlying failures in BLS operations, or wrap errors from dependencies.
 #[derive(Debug, PartialEq, Eq)]
 pub enum BLSError {
+    BadOctetLength,
+    BadXCoordinate,
+    CompressedBitNotSet,
+    CompressedBitSet,
+    HashToPointError,
+    IncorrectCompressedSize,
+    IncorrectUncompressedSize,
     /// Error coming from `I2OSP` (see RFC 8017, section 4.1)
     /// <https://datatracker.ietf.org/doc/html/rfc8017#section-4.1>
     IntegerTooLarge,
+    MalformedOctets,
+    NoSignaturesToAggregate,
+    PointInIncorrectSubgroup,
+    PointNotOnCurve,
+    PublicKeysAndMessagesSizeMismatch,
     SerializationErrorNoXCoordinate,
     SerializationErrorNoYCoordinate,
-    IncorrectUncompressedSize,
-    IncorrectCompressedSize,
-    CompressedBitSet,
-    CompressedBitNotSet,
-    BadOctetLength,
-    MalformedOctets,
-    BadXCoordinate,
-    PointNotOnCurve,
-    HashToPointError,
-    NotEnoughSignaturesToAggregate,
-    PublicKeysAndMessagesSizeMismatch,
+    SignatureNotInCorrectSubgroup,
 }

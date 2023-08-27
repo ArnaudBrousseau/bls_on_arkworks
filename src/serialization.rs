@@ -1,7 +1,5 @@
-//! Module implementing serialization and deserialization, in compressed and uncompressed formats.
-//! Note: in the IRTF BLS spec, serialization spec has moved and the link isn't valid.
-//! <https://github.com/zkcrypto/pairing/blob/master/src/bls12_381/README.md#serialization> (broken)
-//! should be <https://github.com/zkcrypto/pairing/tree/fa8103764a07bd273927447d434de18aace252d3/src/bls12_381#serialization> (valid)
+//! Implements serialization and deserialization, in compressed and uncompressed formats,
+//! following [this standard](https://github.com/zkcrypto/pairing/tree/fa8103764a07bd273927447d434de18aace252d3/src/bls12_381#serialization)
 //! ----
 //! Original discussion for this serialization standard: <https://github.com/zcash/zcash/issues/2517>
 use ark_ec::AffineRepr;
@@ -46,7 +44,7 @@ const G2_UNCOMPRESSED_POINT_AT_INFINITY: &[u8; G2_UNCOMPRESSED_POINT_SIZE] = &[
 
 /// Converts a point on E1 to bytes. These bytes represent the compressed encoding of the point.
 /// The point at infinity is serialized as all zeroes, except the 2nd-most significant bit is set.
-/// See https://github.com/zkcrypto/pairing/tree/fa8103764a07bd273927447d434de18aace252d3/src/bls12_381#serialization
+/// See [this standard](https://github.com/zkcrypto/pairing/tree/fa8103764a07bd273927447d434de18aace252d3/src/bls12_381#serialization).
 pub fn point_to_octets_e1(p: G1AffinePoint) -> Octets {
     if p.is_zero() {
         let mut infinity = vec![0; 48];
@@ -75,7 +73,7 @@ pub fn point_to_octets_e1(p: G1AffinePoint) -> Octets {
 
 /// Converts a point on E1 to bytes. These bytes represent the uncompressed encoding of the point.
 /// The point at infinity is serialized as all zeroes, except the 2nd-most significant bit is set.
-/// See <https://github.com/zkcrypto/pairing/tree/fa8103764a07bd273927447d434de18aace252d3/src/bls12_381#serialization>
+/// See [this standard](https://github.com/zkcrypto/pairing/tree/fa8103764a07bd273927447d434de18aace252d3/src/bls12_381#serialization)
 pub fn point_to_octets_uncompressed_e1(p: G1AffinePoint) -> Octets {
     if p.is_zero() {
         return G1_UNCOMPRESSED_POINT_AT_INFINITY.to_vec();
@@ -87,11 +85,11 @@ pub fn point_to_octets_uncompressed_e1(p: G1AffinePoint) -> Octets {
     res
 }
 
-/// From the spec:
-///     returns the point P corresponding
-///     to the canonical representation ostr, or INVALID if ostr is not
-///     a valid output of point_to_octets. This operation is also
-///     known as deserialization.
+/// Returns the point P corresponding
+/// to the canonical representation ostr, or INVALID if ostr is not
+/// a valid output of point_to_octets. This operation is also
+/// known as deserialization.
+///
 /// This function accepts uncompressed (96 bytes) or compressed (48 bytes) representations.
 pub fn octets_to_point_e1(octets: &Octets) -> Result<G1AffinePoint, BLSError> {
     match octets.len() {
@@ -115,9 +113,9 @@ pub fn octets_to_point_e1(octets: &Octets) -> Result<G1AffinePoint, BLSError> {
                 G1AffinePoint::get_ys_from_x_unchecked(x).ok_or(BLSError::BadXCoordinate)?;
 
             if uses_largest_y {
-                Ok(G1AffinePoint::new(x, y2))
+                create_g1_point(x, y2)
             } else {
-                Ok(G1AffinePoint::new(x, y1))
+                create_g1_point(x, y1)
             }
         }
         G1_UNCOMPRESSED_POINT_SIZE => {
@@ -136,16 +134,16 @@ pub fn octets_to_point_e1(octets: &Octets) -> Result<G1AffinePoint, BLSError> {
                 .expect("sized in surrounding match");
             let x = BLSFq::from_be_bytes_mod_order(&xy_bytes[..G1_UNCOMPRESSED_POINT_SIZE / 2]);
             let y = BLSFq::from_be_bytes_mod_order(&xy_bytes[G1_UNCOMPRESSED_POINT_SIZE / 2..]);
-            Ok(G1AffinePoint::new(x, y))
+            create_g1_point(x, y)
         }
         _ => Err(BLSError::BadOctetLength),
     }
 }
 
-/// From the spec:
-///     returns the canonical
-///     representation of the point P as an octet string. This
-///     operation is also known as serialization.
+/// Returns the canonical
+/// representation of the point P as an octet string. This
+/// operation is also known as serialization.
+///
 /// The canonical representation is the compressed form.
 pub fn point_to_octets_e2(p: G2AffinePoint) -> Octets {
     if p.is_zero() {
@@ -192,11 +190,11 @@ pub fn point_to_octets_uncompressed_e2(p: G2AffinePoint) -> Octets {
     }
 }
 
-/// From the spec:
-///     returns the point P corresponding
-///     to the canonical representation ostr, or INVALID if ostr is not
-///     a valid output of point_to_octets. This operation is also
-///     known as deserialization.
+/// Returns the point P corresponding
+/// to the canonical representation ostr, or INVALID if ostr is not
+/// a valid output of point_to_octets. This operation is also
+/// known as deserialization.
+///
 /// This function accepts uncompressed (192 bytes) or compressed (96 bytes) representations.
 pub fn octets_to_point_e2(octets: &Octets) -> Result<G2AffinePoint, BLSError> {
     match octets.len() {
@@ -223,9 +221,9 @@ pub fn octets_to_point_e2(octets: &Octets) -> Result<G2AffinePoint, BLSError> {
                 G2AffinePoint::get_ys_from_x_unchecked(x).ok_or(BLSError::BadXCoordinate)?;
 
             if uses_largest_y {
-                Ok(G2AffinePoint::new(x, y2))
+                create_g2_point(x, y2)
             } else {
-                Ok(G2AffinePoint::new(x, y1))
+                create_g2_point(x, y1)
             }
         }
         G2_UNCOMPRESSED_POINT_SIZE => {
@@ -250,10 +248,37 @@ pub fn octets_to_point_e2(octets: &Octets) -> Result<G2AffinePoint, BLSError> {
 
             let x = BLSFq2::new(x_c0, x_c1);
             let y = BLSFq2::new(y_c0, y_c1);
-            Ok(G2AffinePoint::new(x, y))
+
+            create_g2_point(x, y)
         }
         _ => Err(BLSError::BadOctetLength),
     }
+}
+
+// Function to bubble up errors when we create G2 point.
+// `G2AffinePoint::new` panics :(
+fn create_g1_point(x: BLSFq, y: BLSFq) -> Result<G1AffinePoint, BLSError> {
+    let p = G1AffinePoint::new_unchecked(x, y);
+    if !p.is_on_curve() {
+        return Err(BLSError::PointNotOnCurve);
+    }
+    if !p.is_in_correct_subgroup_assuming_on_curve() {
+        return Err(BLSError::PointInIncorrectSubgroup);
+    }
+    Ok(p)
+}
+
+// Function to bubble up errors when we create G2 point.
+// `G2AffinePoint::new` panics by default! :(
+fn create_g2_point(x: BLSFq2, y: BLSFq2) -> Result<G2AffinePoint, BLSError> {
+    let p = G2AffinePoint::new_unchecked(x, y);
+    if !p.is_on_curve() {
+        return Err(BLSError::PointNotOnCurve);
+    }
+    if !p.is_in_correct_subgroup_assuming_on_curve() {
+        return Err(BLSError::PointInIncorrectSubgroup);
+    }
+    Ok(p)
 }
 
 fn mask_first_3_bits(octets: &Octets) -> Octets {
@@ -265,7 +290,7 @@ fn mask_first_3_bits(octets: &Octets) -> Octets {
     res
 }
 
-/// Convenience function to check whether a octet string indicates compression was used
+/// Convenience function to check whether a octet string indicates compression
 fn is_compressed(octets: &Octets) -> bool {
     octets[0] & 0b10000000 > 0
 }

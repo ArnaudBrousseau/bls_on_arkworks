@@ -3,13 +3,16 @@
         "arkworks",
         "arnaud",
         "Brousseau",
+        "Clippy",
         "hasher",
         "hashers",
         "hkdf",
         "hmac",
+        "IRTF",
         "keygen",
         "ostr",
         "pubkey",
-        "repr"
+        "repr",
+        "SSWU"
     ]
 }
