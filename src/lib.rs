@@ -39,8 +39,10 @@ use sha2::{Digest, Sha256};
 
 mod serialization;
 pub mod types;
+pub mod errors;
 
 use types::*;
+use errors::*;
 
 /// Domain separation tags to use if you're working with Ethereum
 pub const DST_ETHEREUM: &str = "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
@@ -71,7 +73,7 @@ fn pairing(u: G2AffinePoint, v: G1AffinePoint) -> BLS12381Pairing {
 fn i2osp(x: u64, x_len: usize) -> Result<Vec<u8>, BLSError> {
     // 1
     if x > 256_u64.pow(x_len.try_into().unwrap()) {
-        return Err(BLSError::IntegerTooLarge);
+        return Err(BLSError::IntegerTooLarge(x, x_len));
     }
 
     // 2
@@ -156,14 +158,22 @@ pub fn point_to_signature_uncompressed(p: G2AffinePoint) -> Signature {
 /// Invoke the appropriate deserialization routine depending on signature variant
 /// For minimal-pubkey-size: `pubkey_to_point(ostr) := octets_to_point_E1(ostr)`
 pub fn pubkey_to_point(pk: &PublicKey) -> Result<G1AffinePoint, BLSError> {
-    serialization::octets_to_point_e1(pk)
+    match pk.len() {
+        48 => serialization::octets_to_point_e1(pk),
+        96 => serialization::octets_to_point_e1_uncompressed(pk),
+        _ => Err(BLSError::WrongSizeForPublicKey(pk.len())),
+    }
 }
 
 /// ([spec link](https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-2.2))
 /// Invoke the appropriate deserialization routine depending on signature variant
 /// For minimal-pubkey-size: signature_to_point(ostr) := octets_to_point_E2(ostr)
 pub fn signature_to_point(signature: &Signature) -> Result<G2AffinePoint, BLSError> {
-    serialization::octets_to_point_e2(signature)
+    match signature.len() {
+        96 => serialization::octets_to_point_e2(signature),
+        192 => serialization::octets_to_point_e2_uncompressed(signature),
+        _ => Err(BLSError::WrongSizeForSignature(signature.len())),
+    }
 }
 
 /// ([spec link](https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-2.3))
@@ -522,16 +532,13 @@ mod test {
     use hex_literal::hex;
     use num_bigint::ToBigInt;
     use rand_core::{OsRng, RngCore};
-
-    use crate::serialization::octets_to_point_e2;
-
     use super::*;
 
     #[test]
     fn test_i2osp() {
         assert_eq!(i2osp(1, 1).unwrap(), vec![0b00000001],);
         assert_eq!(i2osp(255, 1).unwrap(), vec![0b11111111],);
-        assert_eq!(i2osp(257, 1).unwrap_err(), BLSError::IntegerTooLarge,);
+        assert_eq!(i2osp(257, 1).unwrap_err().to_string(), "Integer too large: cannot fit 257 into a byte string of length 1");
         assert_eq!(i2osp(259, 2).unwrap(), vec![0b00000001, 0b00000011],);
     }
 
@@ -648,8 +655,8 @@ mod test {
         // To do this we parse the coordinates as an uncompressed G2 point, then compare to the point obtained from parsing our actual signature.
         // They should be the same!
         assert_eq!(
-            octets_to_point_e2(&signature).unwrap(),
-            octets_to_point_e2(
+            signature_to_point(&signature).unwrap(),
+            signature_to_point(
                 &hex::decode(format!(
                     "{}{}{}{}",
                     x_c1.encode_hex::<String>(),
