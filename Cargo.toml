@@ -11,18 +11,33 @@ keywords = ["cryptography", "BLS", "BLS12381", "ethereum", "signature"]
 categories = ["cryptography"]
 
 [dependencies]
-ark-ff = { version = "0.4.2" }
-ark-bls12-381 = { version = "0.4.0" }
-ark-std = { version = "0.4.0" }
-ark-ec = { version = "0.4.2" }
-hmac = { version = "0.12.1" }
-sha2 = { version = "0.10.6" }
-hkdf = { version = "0.12.3" }
-num-bigint = { version = "0.4.3" }
-ark-serialize = { version = "0.4.2" }
+ark-ff = { version = "0.4.2", default-features = false }
+ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
+ark-std = { version = "0.4.0", default-features = false }
+ark-ec = { version = "0.4.2", default-features = false }
+hmac = { version = "0.12.1", default-features = false }
+sha2 = { version = "0.10.6", default-features = false }
+hkdf = { version = "0.12.3", default-features = false }
+num-bigint = { version = "0.4.3", default-features = false }
+ark-serialize = { version = "0.4.2", default-features = false }
+libm = "0.2.7"
 
 [dev-dependencies]
 rand_core = {version = "0.6.4", features = ["getrandom"] }
 hex = { version = "0.4.3" }
 hex-literal = { version = "0.4.1" }
 json = { version = "0.12.4" }
+
+[features]
+default = ["std"]
+std = [
+    "ark-ff/std",
+    "ark-bls12-381/std",
+    "ark-std/std",
+    "ark-ec/std",
+    "hmac/std",
+    "sha2/std",
+    "hkdf/std",
+    "num-bigint/std",
+    "ark-serialize/std",
+]
