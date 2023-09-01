@@ -2,6 +2,9 @@
 //! following [this standard](https://github.com/zkcrypto/pairing/tree/fa8103764a07bd273927447d434de18aace252d3/src/bls12_381#serialization)
 //! ----
 //! Original discussion for this serialization standard: <https://github.com/zcash/zcash/issues/2517>
+use alloc::string::ToString;
+use alloc::vec;
+use alloc::vec::Vec;
 use ark_ec::AffineRepr;
 use ark_ff::PrimeField;
 use num_bigint::BigInt;

@@ -15,7 +15,13 @@
 //!  * hash_pubkey_to_point: `BLS12381G2_XMD:SHA-256_SSWU_RO_` with the ASCII-encoded domain separation tag `BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
 //!
 //! While the Domain Separation Tag (DST) isn't hardcoded in this crate, we are hardcoding the choice of elliptic curve (BLS12-381), hash function (SHA-256), and variant (minimal-pubkey-size).
-use std::ops::{Add, AddAssign};
+#![cfg_attr(not(feature = "std"), no_std)]
+
+extern crate alloc;
+
+use alloc::string::ToString;
+use alloc::vec::Vec;
+use core::ops::{Add, AddAssign};
 
 use ark_bls12_381::g2::Config as G2Config;
 use ark_bls12_381::Bls12_381;
@@ -198,7 +204,8 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
         // 3
         // L is defined as "the integer given by ceil((3 * ceil(log2(r))) / 16)."
         // Note that `ceil(log2(r))` is, conveniently, the number of bits in `r`. Hence BLSFr::MODULUS_BIT_SIZE.
-        let l = ((3_f64 * BLSFr::MODULUS_BIT_SIZE as f64) / 16_f64).ceil() as u64;
+        // we use the libm crate, since core doesn't have support for math.
+        let l = libm::ceil((3_f64 * BLSFr::MODULUS_BIT_SIZE as f64) / 16_f64) as u64;
         let info = i2osp(l, 2).expect("unable to convert L to octet bytes");
         let mut okm = [0u8; 42];
         hk.expand(&info, &mut okm).expect("unable to expand HKDF");

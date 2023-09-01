@@ -1,4 +1,5 @@
 //! Types and type aliases for BLS operations.
+use alloc::vec::Vec;
 use ark_bls12_381::g1::Config as G1Config;
 use ark_bls12_381::g2::Config as G2Config;
 use ark_bls12_381::Fq2;
