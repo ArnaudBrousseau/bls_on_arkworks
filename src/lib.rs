@@ -19,7 +19,6 @@
 
 extern crate alloc;
 
-use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::ops::{Add, AddAssign};
 
@@ -34,7 +33,6 @@ use ark_ff::field_hashers::DefaultFieldHasher;
 use ark_ff::PrimeField;
 use ark_std::Zero;
 use hkdf::Hkdf;
-use num_bigint::{BigInt, Sign};
 use sha2::{Digest, Sha256};
 
 pub mod errors;
@@ -84,22 +82,6 @@ fn i2osp(x: u64, x_len: usize) -> Result<Vec<u8>, BLSError> {
 
     // 3
     Ok(bytes[last_byte_idx - x_len..last_byte_idx].to_vec())
-}
-
-/// ([spec link](https://datatracker.ietf.org/doc/html/rfc8017#section-4.2))
-/// OS2IP converts an octet string to a nonnegative integer.
-///
-/// Implementation:
-/// ```plain
-///    1.  Let X_1 X_2 ... X_xLen be the octets of X from first to last,
-///        and let x_(xLen-i) be the integer value of the octet X_i for 1 <= i <= xLen.
-///    2.  Let x = x_(xLen-1) 256^(xLen-1) + x_(xLen-2) 256^(xLen-2) + ...  + x_1 256 + x_0.
-///    3.  Output x.
-/// ```
-fn os2ip(os: &[u8]) -> BigInt {
-    // 1 & 2 & 3
-    // The spec is a bit confusing, but step 1 and 2 can be rephrased as "parse bytes as a big-endian integer"
-    BigInt::from_bytes_be(Sign::Plus, os)
 }
 
 /// ([spec link](https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-1.3))
@@ -222,16 +204,18 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
         hk.expand(&info, &mut okm).expect("unable to expand HKDF");
 
         // 4
-        // A bit awkward, but we need to convert from arkworks' BigInt to the more standard num-bigint version.
-        // The resulting order `r` should be 52435875175126190479447740508185965837690552500527637822603658699938581184513.
-        let r = BigInt::parse_bytes(BLSFr::MODULUS.to_string().as_bytes(), 10)
-            .expect("parsing a constant");
-        let sk = os2ip(&okm) % r;
+        // XXX: deviation from the spec here; we don't call our own `OS2IP`.
+        // Arkworks' `from_be_bytes_mod_order` implements the same functionality as
+        // well as proper reduction modulo [`BLSFr::MODULUS`].
+        // To convince yourself, go read the relevant section of the spec:
+        // [here](https://datatracker.ietf.org/doc/html/rfc8017#section-4.2).
+        // `OS2IP` is simply "deserialize integer from big-endian octets".
+        let sk = BLSFr::from_be_bytes_mod_order(&okm);
 
         // 5
         if !sk.is_zero() {
             // 6
-            return sk;
+            return sk.0;
         } else {
             // 7
             let mut hasher = Sha256::new();
@@ -253,8 +237,7 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
 pub fn sk_to_pk(sk: SecretKey) -> PublicKey {
     // 1
     let g = G1AffinePoint::generator();
-    let (_, digits) = sk.to_u64_digits();
-    let p = g.mul_bigint(&digits);
+    let p = g.mul_bigint(sk);
 
     // 2 & 3
     point_to_pubkey(p.into())
@@ -277,8 +260,7 @@ pub fn sign(sk: SecretKey, message: &Octets, dst: &Octets) -> Result<Signature, 
     let q = hash_to_point(message, dst);
 
     // 2
-    let (_sign, digits) = sk.to_u64_digits();
-    let r = q.mul_bigint(&digits);
+    let r = q.mul_bigint(sk);
 
     // Not officially mandated by the standard, but return an error if the signature isn't in the subgroup
     // This can happen if zero is passed as a value for `sk`
@@ -530,9 +512,10 @@ fn subgroup_check_e2(p: G2AffinePoint) -> bool {
 #[cfg(test)]
 mod test {
     use super::*;
+    use ark_ff::BigInteger;
     use hex::ToHex;
     use hex_literal::hex;
-    use num_bigint::ToBigInt;
+    use num_bigint::BigInt;
     use rand_core::{OsRng, RngCore};
 
     #[test]
@@ -547,18 +530,6 @@ mod test {
     }
 
     #[test]
-    fn test_os2ip() {
-        assert_eq!(os2ip(&[0b00000000]), BigInt::from(0),);
-        assert_eq!(os2ip(&[0b00000001]), BigInt::from(1),);
-        assert_eq!(os2ip(&[0b11111111]), BigInt::from(255),);
-        assert_eq!(
-            os2ip(&[0b00000010, 0b11111111]),
-            // 256 * 2 + 255 = 767
-            BigInt::from(767),
-        );
-    }
-
-    #[test]
     #[should_panic(expected = "keygen requires at least 32 bytes of entropy passed in. Got 31")]
     fn test_keygen_fails_with_short_ikm() {
         let ikm: [u8; 31] = [0u8; 31];
@@ -570,7 +541,7 @@ mod test {
         let mut ikm = [0u8; 32];
         OsRng.fill_bytes(&mut ikm);
         let res = keygen(&ikm.to_vec());
-        assert!(res > 0.to_bigint().unwrap());
+        assert!(!res.is_zero());
     }
 
     #[test]
@@ -597,7 +568,7 @@ mod test {
     fn test_sk_to_pk_with_one() {
         // multiplying G by one should give G
         assert_eq!(
-            sk_to_pk(BigInt::from(1)),
+            sk_to_pk(SecretKey::from(1u8)),
             point_to_pubkey(G1AffinePoint::generator()),
         );
     }
@@ -608,7 +579,8 @@ mod test {
         // This was the first derived address (index m/0) from the following seed:
         // 4c4f7f21e38afd4c586cbd1e5854450b25149ed8d9d71ca4372cb810e58a827c197cb337e0afbfedec7a0c849e405fea4e54316daf01a5b7e03a6b0a523e2fe3
         let secret = "316cb723e4bbdbf536d82384efe04b15484fd44afb5e579e04718c7e7eb83e0c";
-        let public_key = sk_to_pk(BigInt::parse_bytes(secret.to_string().as_bytes(), 16).unwrap());
+        let public_key = sk_to_pk(hex_string_to_big_int(secret));
+
 
         assert_eq!(
             public_key,
@@ -619,8 +591,8 @@ mod test {
     #[test]
     fn test_sk_to_pk_against_noble() {
         // Using the mini-app at the bottom of https://paulmillr.com/noble/
-        let secret = b"f0c5bf519a6ede6be1ab684f6ecc1b129b0fc2ed95bd294bb2967077ae38a378";
-        let public_key = sk_to_pk(BigInt::parse_bytes(secret, 16).unwrap());
+        let secret = "f0c5bf519a6ede6be1ab684f6ecc1b129b0fc2ed95bd294bb2967077ae38a378";
+        let public_key = sk_to_pk(hex_string_to_big_int(secret));
         assert_eq!(
             public_key,
             hex!("855e5129c94bb05d0bcdf0ba1e56750f9fac3da8d272baec0ce3f1fec6f22a91b84b33032a99dee48844feefc37739dc"),
@@ -631,11 +603,7 @@ mod test {
     fn test_sign_against_noble_with_default_private_key() {
         let signature = sign(
             // Using the mini-app at the bottom of https://paulmillr.com/noble/
-            BigInt::parse_bytes(
-                b"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-                16,
-            )
-            .unwrap(),
+            hex_string_to_big_int("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
             // "greetings from noble"
             &hex::decode("011a775441ecb14943130a16f00cdd41818a83dd04372f3259e3ca7237e3cdaa")
                 .unwrap(),
@@ -651,6 +619,7 @@ mod test {
         );
 
         // Just for fun, let's also test the individual point coordinates given by the webapp.
+        // Not necessarily obvious at first so I'll say it here: these are NOT hex strings! Decimal numbers below.
         let (_, x_c0) = BigInt::parse_bytes(b"1951074311397816256217129380891448215678103053074455239203290963002534607849011313647510737720424816079908725247513", 10).unwrap().to_bytes_be();
         let (_, x_c1) = BigInt::parse_bytes(b"2934872654361522962759986647459927853251267831434292165317227028576379973684083603495601412610656616034626006090584", 10).unwrap().to_bytes_be();
         let (_, y_c0) = BigInt::parse_bytes(b"1869792139333396858178251220129949242633799375694650208182172238168545074778871854467625856201949000921888099776790", 10).unwrap().to_bytes_be();
@@ -678,11 +647,7 @@ mod test {
     fn test_sign_against_noble_with_random_private_key() {
         let signature = sign(
             // Using the mini-app at the bottom of https://paulmillr.com/noble/
-            BigInt::parse_bytes(
-                b"22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff",
-                16,
-            )
-            .unwrap(),
+            hex_string_to_big_int("22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff"),
             // Verify the hash with `echo -n 'Arnaud testing. 1. 2. Over. Kshhh.' | openssl dgst -sha256`
             &hex::decode("254958ab7082ba726466464e4118d86d5b19f24629b5ecfe539253fa2c821a79")
                 .unwrap(),
@@ -700,13 +665,7 @@ mod test {
 
     #[test]
     fn test_verify() {
-        let pk = sk_to_pk(
-            BigInt::parse_bytes(
-                b"22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff",
-                16,
-            )
-            .unwrap(),
-        );
+        let pk = sk_to_pk(hex_string_to_big_int("22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff"));
         // Verify the hash with `echo -n 'Arnaud testing. 1. 2. Over. Kshhh.' | openssl dgst -sha256`
         let message =
             hex::decode("254958ab7082ba726466464e4118d86d5b19f24629b5ecfe539253fa2c821a79")
@@ -723,21 +682,9 @@ mod test {
         let dst = &"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_"
             .as_bytes()
             .to_vec();
-        let sk1 = BigInt::parse_bytes(
-            b"22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff",
-            16,
-        )
-        .unwrap();
-        let sk2 = BigInt::parse_bytes(
-            b"4b8e9a78f3da90c1f03160d9a904eba83f70abe4c0364ec4c1a37b9dd32cfe0d",
-            16,
-        )
-        .unwrap();
-        let sk3 = BigInt::parse_bytes(
-            b"0179b2fa76e0b267c9eae3ecec1f9beb31f1c2e25a71b70cc465d20afd835876",
-            16,
-        )
-        .unwrap();
+        let sk1 = hex_string_to_big_int("22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff");
+        let sk2 = hex_string_to_big_int("4b8e9a78f3da90c1f03160d9a904eba83f70abe4c0364ec4c1a37b9dd32cfe0d");
+        let sk3 = hex_string_to_big_int("0179b2fa76e0b267c9eae3ecec1f9beb31f1c2e25a71b70cc465d20afd835876");
 
         // Verify the digests with `echo -n 'Arnaud is testing {one,two,three}' | openssl dgst -sha256`
         let msg1 = hex::decode("0c1c81866dafbd0e9e3dc275ae3e47a82d1ce3b97696553eb3f86c4246dda0e4")
@@ -769,5 +716,23 @@ mod test {
         let q = hash_to_point(&vec![0, 0], &dst);
 
         assert_ne!(p, q);
+    }
+
+    // Test helper to get a SecretKey (BigInteger256) from hex strings
+    fn hex_string_to_big_int(s: &str) -> SecretKey {
+        let bytes = hex::decode(s).unwrap();
+        let mut bits = vec![false; 8*bytes.len()];
+        for (i, byte) in bytes.iter().enumerate() {
+            bits[8*i] = byte & 0b10000000 > 0;
+            bits[8*i+1] = byte & 0b01000000 > 0;
+            bits[8*i+2] = byte & 0b00100000 > 0;
+            bits[8*i+3] = byte & 0b00010000 > 0;
+            bits[8*i+4] = byte & 0b00001000 > 0;
+            bits[8*i+5] = byte & 0b00000100 > 0;
+            bits[8*i+6] = byte & 0b00000010 > 0;
+            bits[8*i+7] = byte & 0b00000001 > 0;
+        }
+
+        SecretKey::from_bits_be(&bits)
     }
 }
