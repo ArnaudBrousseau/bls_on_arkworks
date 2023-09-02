@@ -217,7 +217,8 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
         // we use the libm crate, since core doesn't have support for math.
         let l = libm::ceil((3_f64 * BLSFr::MODULUS_BIT_SIZE as f64) / 16_f64) as u64;
         let info = i2osp(l, 2).expect("unable to convert L to octet bytes");
-        let mut okm = [0u8; 42];
+        // .try_into().unwrap() is okay here, L is a static value!
+        let mut okm = vec![0u8; l.try_into().unwrap()];
         hk.expand(&info, &mut okm).expect("unable to expand HKDF");
 
         // 4
