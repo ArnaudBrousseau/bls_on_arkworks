@@ -34,11 +34,13 @@ pub fn point_to_octets_uncompressed_e1(p: G1AffinePoint) -> Octets {
 /// This function accepts uncompressed (96 bytes) or compressed (48 bytes) representations.
 /// This function accepts compressed (48 bytes) representations.
 pub fn octets_to_point_e1(octets: &Octets) -> Result<G1AffinePoint, BLSError> {
+    validate_infinity_flag(octets)?;
     G1AffinePoint::deserialize_compressed(&**octets).map_err(BLSError::from)
 }
 
 /// Similar to [`octets_to_point_e1`] but accepts uncompressed (96 bytes) format.
 pub fn octets_to_point_e1_uncompressed(octets: &Octets) -> Result<G1AffinePoint, BLSError> {
+    validate_infinity_flag(octets)?;
     G1AffinePoint::deserialize_uncompressed(&**octets).map_err(BLSError::from)
 }
 
@@ -68,11 +70,38 @@ pub fn point_to_octets_uncompressed_e2(p: G2AffinePoint) -> Octets {
 ///
 /// This function accepts compressed (96 bytes) representations.
 pub fn octets_to_point_e2(octets: &Octets) -> Result<G2AffinePoint, BLSError> {
+    validate_infinity_flag(octets)?;
     G2AffinePoint::deserialize_compressed(&**octets).map_err(BLSError::from)
 }
 /// Similar to [`octets_to_point_e2`] but accepts uncompressed (192 bytes) representations.
 pub fn octets_to_point_e2_uncompressed(octets: &Octets) -> Result<G2AffinePoint, BLSError> {
+    validate_infinity_flag(octets)?;
     G2AffinePoint::deserialize_uncompressed(&**octets).map_err( BLSError::from)
+}
+
+// Currently a bug in the deserialization logic in Arkworks: if the infinity flag is set but other bits aren't 0, the deserialization still works.
+// This function ensures that all bits after the initial 2 are set to zero when the infinity flag is set. Otherwise return an error.
+fn validate_infinity_flag(octets: &Octets) -> Result<(), BLSError> {
+    if octets.len() > 1 {
+        let infinity_flag_set = octets[0] & 0b01000000 > 0;
+        if infinity_flag_set {
+            for (i, o) in octets.iter().enumerate() {
+                let mask = match i {
+                    // See https://github.com/zkcrypto/pairing/tree/fa8103764a07bd273927447d434de18aace252d3/src/bls12_381#serialization:
+                    // For a correct encoding of a point at infinity:
+                    // - First bit (indicating compressed/uncompressed): can be 0 or 1.
+                    // - Second bit (infinity bit, already checked above): must be 1.
+                    // - Third bit (helps with compressed point deserialization): MUST be 0.
+                    // - All other bits MUST be 0
+                    0 => 0b00111111,
+                    // All other bytes MUST be 0
+                    _ => 0b11111111,
+                };
+                if o & mask > 0 { return Err(BLSError::BadInfinityEncoding(i))}
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Test cases follow [this standard](https://github.com/zkcrypto/pairing/tree/fa8103764a07bd273927447d434de18aace252d3/src/bls12_381#serialization)
@@ -257,5 +286,36 @@ mod test {
             ").to_vec()).unwrap(),
             G2AffinePoint::generator()
         )
+    }
+    
+    #[test]
+    // If this test starts failing, we can get rid of the custom logic!
+    fn test_arkworks_accepts_invalid_infinity_encoding() {
+        let mut bad_infinity = vec![0u8; 96];
+        bad_infinity[0] = 0b11000111;
+        assert_eq!(
+            G2AffinePoint::deserialize_compressed(&*bad_infinity).unwrap(),
+            G2AffinePoint::identity(),
+        )
+    }
+
+    #[test]
+    fn test_this_library_does_not_accept_invalid_infinity_encoding() {
+        let mut bad_infinity = vec![0u8; 96];
+        
+        // Set a bad first byte
+        bad_infinity[0] = 0b11010000;
+        assert_eq!(
+            octets_to_point_e2(&bad_infinity).unwrap_err().to_string(),
+            "Bad encoding: infinity bit set but found non-zero bits in byte at index 0"
+        );
+
+        // Now set a good first byte, but a bad byte at index 42
+        bad_infinity[0] = 0b11000000;
+        bad_infinity[42] = 0b01010101;
+        assert_eq!(
+            octets_to_point_e2(&bad_infinity).unwrap_err().to_string(),
+            "Bad encoding: infinity bit set but found non-zero bits in byte at index 42"
+        );
     }
 }

@@ -8,6 +8,8 @@ use ark_serialize::SerializationError;
 /// Inspired by the excellent https://blog.burntsushi.net/rust-error-handling
 #[derive(Debug)]
 pub enum BLSError {
+    /// Happens when the infinity bit is set in an encoding point, but the rest of the bytes aren't correctly zero'd
+    BadInfinityEncoding(usize),
     /// Error coming from `ark_serialize` upon deserialization
     DeserializationError(SerializationError),
     /// Error coming from `I2OSP` (see RFC 8017, section 4.1)
@@ -24,6 +26,7 @@ impl Error for BLSError {}
 impl fmt::Display for BLSError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            BLSError::BadInfinityEncoding(i) => write!(f, "Bad encoding: infinity bit set but found non-zero bits in byte at index {}", i),
             BLSError::DeserializationError(ref err) => err.fmt(f),
             BLSError::IntegerTooLarge(ref n, l) => write!(f, "Integer too large: cannot fit {} into a byte string of length {}", n, l),
             BLSError::NoSignaturesToAggregate => write!(f, "Cannot aggregate signatures: no signatures were passed in"),
