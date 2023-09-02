@@ -14,8 +14,8 @@ fn test_aggregate() {
             // The Ethereum test vector is [] -> null but IMO returning an error is more correct
             // `null` shouldn't be a valid signature / result returned from `aggregate`.
             assert_eq!(
-                signature,
-                Err(core::types::BLSError::NoSignaturesToAggregate)
+                signature.unwrap_err().to_string(),
+                "Cannot aggregate signatures: no signatures were passed in".to_string(),
             )
         }
     }
@@ -119,8 +119,8 @@ fn test_sign() {
 
         if c.expected_signature.len() == 0 {
             assert_eq!(
-                signature,
-                Err(core::types::BLSError::SignatureNotInCorrectSubgroup)
+                signature.unwrap_err().to_string(),
+                "Signature point is not in the correct subgroup. Please check the passed in secret key value.",
             );
         } else {
             assert_eq!(

@@ -45,26 +45,3 @@ pub type Signature = Octets;
 
 /// Our hash function of choice is SHA-256
 pub type BLSHmac = Hmac<Sha256>;
-
-/// Error enum to wrap underlying failures in BLS operations, or wrap errors from dependencies.
-#[derive(Debug, PartialEq, Eq)]
-pub enum BLSError {
-    BadOctetLength,
-    BadXCoordinate,
-    CompressedBitNotSet,
-    CompressedBitSet,
-    HashToPointError,
-    IncorrectCompressedSize,
-    IncorrectUncompressedSize,
-    /// Error coming from `I2OSP` (see RFC 8017, section 4.1)
-    /// <https://datatracker.ietf.org/doc/html/rfc8017#section-4.1>
-    IntegerTooLarge,
-    MalformedOctets,
-    NoSignaturesToAggregate,
-    PointInIncorrectSubgroup,
-    PointNotOnCurve,
-    PublicKeysAndMessagesSizeMismatch,
-    SerializationErrorNoXCoordinate,
-    SerializationErrorNoYCoordinate,
-    SignatureNotInCorrectSubgroup,
-}
