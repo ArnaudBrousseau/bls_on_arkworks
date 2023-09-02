@@ -37,12 +37,12 @@ use hkdf::Hkdf;
 use num_bigint::{BigInt, Sign};
 use sha2::{Digest, Sha256};
 
+pub mod errors;
 mod serialization;
 pub mod types;
-pub mod errors;
 
-use types::*;
 use errors::*;
+use types::*;
 
 /// Domain separation tags to use if you're working with Ethereum
 pub const DST_ETHEREUM: &str = "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
@@ -529,17 +529,20 @@ fn subgroup_check_e2(p: G2AffinePoint) -> bool {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use hex::ToHex;
     use hex_literal::hex;
     use num_bigint::ToBigInt;
     use rand_core::{OsRng, RngCore};
-    use super::*;
 
     #[test]
     fn test_i2osp() {
         assert_eq!(i2osp(1, 1).unwrap(), vec![0b00000001],);
         assert_eq!(i2osp(255, 1).unwrap(), vec![0b11111111],);
-        assert_eq!(i2osp(257, 1).unwrap_err().to_string(), "Integer too large: cannot fit 257 into a byte string of length 1");
+        assert_eq!(
+            i2osp(257, 1).unwrap_err().to_string(),
+            "Integer too large: cannot fit 257 into a byte string of length 1"
+        );
         assert_eq!(i2osp(259, 2).unwrap(), vec![0b00000001, 0b00000011],);
     }
 

@@ -3,8 +3,8 @@ use alloc::vec::Vec;
 use ark_serialize::CanonicalDeserialize;
 use ark_serialize::CanonicalSerialize;
 
-use crate::types::*;
 use crate::errors::*;
+use crate::types::*;
 
 /// Converts a point on E1 to bytes. These bytes represent the compressed encoding of the point.
 /// The point at infinity is serialized as all zeroes, except the 2nd-most significant bit is set.
@@ -76,7 +76,7 @@ pub fn octets_to_point_e2(octets: &Octets) -> Result<G2AffinePoint, BLSError> {
 /// Similar to [`octets_to_point_e2`] but accepts uncompressed (192 bytes) representations.
 pub fn octets_to_point_e2_uncompressed(octets: &Octets) -> Result<G2AffinePoint, BLSError> {
     validate_infinity_flag(octets)?;
-    G2AffinePoint::deserialize_uncompressed(&**octets).map_err( BLSError::from)
+    G2AffinePoint::deserialize_uncompressed(&**octets).map_err(BLSError::from)
 }
 
 // Currently a bug in the deserialization logic in Arkworks: if the infinity flag is set but other bits aren't 0, the deserialization still works.
@@ -97,7 +97,9 @@ fn validate_infinity_flag(octets: &Octets) -> Result<(), BLSError> {
                     // All other bytes MUST be 0
                     _ => 0b11111111,
                 };
-                if o & mask > 0 { return Err(BLSError::BadInfinityEncoding(i))}
+                if o & mask > 0 {
+                    return Err(BLSError::BadInfinityEncoding(i));
+                }
             }
         }
     }
@@ -210,14 +212,14 @@ mod test {
     #[test]
     fn test_octets_to_point_e1() {
         const G1_COMPRESSED_POINT_AT_INFINITY: &[u8; 48] = &[
-            0b11000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0b11000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
         const G1_UNCOMPRESSED_POINT_AT_INFINITY: &[u8; 96] = &[
-            0b01000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
+            0b01000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
 
         assert_eq!(
@@ -233,33 +235,32 @@ mod test {
             17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb
             08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1
             ").to_vec()).unwrap(),
-            G1AffinePoint::generator()  
+            G1AffinePoint::generator(),
         );
         assert_eq!(
             octets_to_point_e1(&hex!("
             97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb
             ").to_vec()).unwrap(),
-            G1AffinePoint::generator()
-        )
+            G1AffinePoint::generator(),
+        );
     }
-
 
     #[test]
     fn test_octets_to_point_e2() {
         const G2_UNCOMPRESSED_POINT_AT_INFINITY: &[u8; 192] = &[
-            0b01000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
+            0b01000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
         const G2_COMPRESSED_POINT_AT_INFINITY: &[u8; 96] = &[
-            0b11000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
+            0b11000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
 
         assert_eq!(
@@ -287,7 +288,7 @@ mod test {
             G2AffinePoint::generator()
         )
     }
-    
+
     #[test]
     // If this test starts failing, we can get rid of the custom logic!
     fn test_arkworks_accepts_invalid_infinity_encoding() {
@@ -302,7 +303,7 @@ mod test {
     #[test]
     fn test_this_library_does_not_accept_invalid_infinity_encoding() {
         let mut bad_infinity = vec![0u8; 96];
-        
+
         // Set a bad first byte
         bad_infinity[0] = 0b11010000;
         assert_eq!(
