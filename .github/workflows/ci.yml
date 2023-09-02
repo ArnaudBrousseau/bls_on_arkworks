@@ -1,7 +1,6 @@
 name: Rust CI
 
-on:
-  push:
+on: [push, pull_request]
 
 jobs:
   lints_n_tests:
