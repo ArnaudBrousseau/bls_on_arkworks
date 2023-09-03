@@ -38,6 +38,5 @@ std = [
     "hmac/std",
     "sha2/std",
     "hkdf/std",
-    "num-bigint/std",
     "ark-serialize/std",
 ]
