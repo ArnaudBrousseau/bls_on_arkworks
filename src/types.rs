@@ -7,7 +7,6 @@ use ark_bls12_381::{Bls12_381, Fq, Fr};
 use ark_ec::pairing::PairingOutput;
 use ark_ec::short_weierstrass::{Affine, Projective};
 use hmac::Hmac;
-use num_bigint::BigInt;
 use sha2::Sha256;
 
 /// Type alias for BLS' base field
@@ -32,8 +31,10 @@ pub type BLS12381Pairing = PairingOutput<Bls12_381>;
 /// The spec often talks about "octets strings". We alias `Vec<u8>` to have the code read closer to the spec.
 pub type Octets = Vec<u8>;
 
-/// A secret key is just a `BigInt`
-pub type SecretKey = BigInt;
+/// A secret key is an integer between 0 and the base field modulus
+/// In other words: a field element.
+/// To obtain a [`SecretKey`] from bytes, use `SecretKey::from_be_bytes_mod_order(&bytes)`.
+pub type SecretKey = BLSFr;
 
 /// Represents a point in G1
 /// (we're using the "minimal-pubkey-size" variant of the BLS spec)

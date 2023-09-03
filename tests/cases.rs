@@ -1,7 +1,6 @@
+use ark_ff::PrimeField;
 use bls_on_arkworks::types::{Octets, SecretKey};
 use std::fs;
-
-use num_bigint::BigInt;
 
 pub fn aggregate() -> Vec<AggregateCase> {
     let paths = fs::read_dir("tests/aggregate").unwrap();
@@ -190,7 +189,7 @@ pub fn sign_cases() -> Vec<SignCase> {
             let content = fs::read_to_string(path.clone()).unwrap();
             let parsed_content = json::parse(&content).unwrap();
             let private_key =
-                prefixed_hex_string_to_bigint(&parsed_content["input"]["privkey"].to_string());
+                prefixed_hex_string_to_secret_key(&parsed_content["input"]["privkey"].to_string());
             let message =
                 prefixed_hex_string_to_bytes(&parsed_content["input"]["message"].to_string());
             let expected_signature = if parsed_content["output"].is_null() {
@@ -269,6 +268,12 @@ fn prefixed_hex_string_to_bytes(s: &str) -> Vec<u8> {
 }
 
 // 0x1234 -> 4660
-fn prefixed_hex_string_to_bigint(s: &str) -> BigInt {
-    BigInt::parse_bytes(s.clone().replace("0x", "").as_bytes(), 16).unwrap()
+fn prefixed_hex_string_to_secret_key(s: &str) -> SecretKey {
+    // Remove the "0x" prefix
+    let mut non_prefixed = s.to_string();
+    non_prefixed.remove(0);
+    non_prefixed.remove(0);
+
+    let bytes = hex::decode(non_prefixed).unwrap();
+    SecretKey::from_be_bytes_mod_order(&bytes)
 }
