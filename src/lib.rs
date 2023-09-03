@@ -29,8 +29,8 @@ use ark_ec::hashing::map_to_curve_hasher::MapToCurveBasedHasher;
 use ark_ec::hashing::HashToCurve;
 use ark_ec::pairing::Pairing;
 use ark_ec::AffineRepr;
-use ark_ff::{field_hashers::DefaultFieldHasher, BigInteger256};
 use ark_ff::PrimeField;
+use ark_ff::{field_hashers::DefaultFieldHasher, BigInteger256};
 use ark_std::Zero;
 use hkdf::Hkdf;
 use sha2::{Digest, Sha256};
@@ -606,7 +606,9 @@ mod test {
     fn test_sign_against_noble_with_default_private_key() {
         let signature = sign(
             // Using the mini-app at the bottom of https://paulmillr.com/noble/
-            hex_string_to_big_int("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+            hex_string_to_big_int(
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            ),
             // "greetings from noble"
             &hex::decode("011a775441ecb14943130a16f00cdd41818a83dd04372f3259e3ca7237e3cdaa")
                 .unwrap(),
@@ -650,7 +652,9 @@ mod test {
     fn test_sign_against_noble_with_random_private_key() {
         let signature = sign(
             // Using the mini-app at the bottom of https://paulmillr.com/noble/
-            hex_string_to_big_int("22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff"),
+            hex_string_to_big_int(
+                "22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff",
+            ),
             // Verify the hash with `echo -n 'Arnaud testing. 1. 2. Over. Kshhh.' | openssl dgst -sha256`
             &hex::decode("254958ab7082ba726466464e4118d86d5b19f24629b5ecfe539253fa2c821a79")
                 .unwrap(),
@@ -668,7 +672,9 @@ mod test {
 
     #[test]
     fn test_verify() {
-        let pk = sk_to_pk(hex_string_to_big_int("22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff"));
+        let pk = sk_to_pk(hex_string_to_big_int(
+            "22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff",
+        ));
         // Verify the hash with `echo -n 'Arnaud testing. 1. 2. Over. Kshhh.' | openssl dgst -sha256`
         let message =
             hex::decode("254958ab7082ba726466464e4118d86d5b19f24629b5ecfe539253fa2c821a79")
@@ -685,9 +691,15 @@ mod test {
         let dst = &"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_"
             .as_bytes()
             .to_vec();
-        let sk1 = hex_string_to_big_int("22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff");
-        let sk2 = hex_string_to_big_int("4b8e9a78f3da90c1f03160d9a904eba83f70abe4c0364ec4c1a37b9dd32cfe0d");
-        let sk3 = hex_string_to_big_int("0179b2fa76e0b267c9eae3ecec1f9beb31f1c2e25a71b70cc465d20afd835876");
+        let sk1 = hex_string_to_big_int(
+            "22ae2c98fe58a9bfae1b5acef4258a4e65593a21de5487dc3357184235ebd5ff",
+        );
+        let sk2 = hex_string_to_big_int(
+            "4b8e9a78f3da90c1f03160d9a904eba83f70abe4c0364ec4c1a37b9dd32cfe0d",
+        );
+        let sk3 = hex_string_to_big_int(
+            "0179b2fa76e0b267c9eae3ecec1f9beb31f1c2e25a71b70cc465d20afd835876",
+        );
 
         // Verify the digests with `echo -n 'Arnaud is testing {one,two,three}' | openssl dgst -sha256`
         let msg1 = hex::decode("0c1c81866dafbd0e9e3dc275ae3e47a82d1ce3b97696553eb3f86c4246dda0e4")
