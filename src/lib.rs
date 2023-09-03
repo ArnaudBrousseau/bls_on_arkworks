@@ -29,7 +29,7 @@ use ark_ec::hashing::map_to_curve_hasher::MapToCurveBasedHasher;
 use ark_ec::hashing::HashToCurve;
 use ark_ec::pairing::Pairing;
 use ark_ec::AffineRepr;
-use ark_ff::field_hashers::DefaultFieldHasher;
+use ark_ff::{field_hashers::DefaultFieldHasher, BigInteger256};
 use ark_ff::PrimeField;
 use ark_std::Zero;
 use hkdf::Hkdf;
@@ -209,13 +209,13 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
         // well as proper reduction modulo [`BLSFr::MODULUS`].
         // To convince yourself, go read the relevant section of the spec:
         // [here](https://datatracker.ietf.org/doc/html/rfc8017#section-4.2).
-        // `OS2IP` is simply "deserialize integer from big-endian octets".
+        // `OS2IP` is essentially "deserialize integer from big-endian octets".
         let sk = BLSFr::from_be_bytes_mod_order(&okm);
 
         // 5
         if !sk.is_zero() {
             // 6
-            return sk.0;
+            return sk;
         } else {
             // 7
             let mut hasher = Sha256::new();
@@ -237,7 +237,9 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
 pub fn sk_to_pk(sk: SecretKey) -> PublicKey {
     // 1
     let g = G1AffinePoint::generator();
-    let p = g.mul_bigint(sk);
+    // XXX: sk.0 does _not_ yield the correct result!
+    let sk_int: BigInteger256 = sk.into();
+    let p = g.mul_bigint(sk_int);
 
     // 2 & 3
     point_to_pubkey(p.into())
@@ -260,7 +262,9 @@ pub fn sign(sk: SecretKey, message: &Octets, dst: &Octets) -> Result<Signature, 
     let q = hash_to_point(message, dst);
 
     // 2
-    let r = q.mul_bigint(sk);
+    // XXX: sk.0 does _not_ yield the correct result!
+    let sk_int: BigInteger256 = sk.into();
+    let r = q.mul_bigint(sk_int);
 
     // Not officially mandated by the standard, but return an error if the signature isn't in the subgroup
     // This can happen if zero is passed as a value for `sk`
@@ -512,7 +516,6 @@ fn subgroup_check_e2(p: G2AffinePoint) -> bool {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_ff::BigInteger;
     use hex::ToHex;
     use hex_literal::hex;
     use num_bigint::BigInt;
@@ -581,7 +584,6 @@ mod test {
         let secret = "316cb723e4bbdbf536d82384efe04b15484fd44afb5e579e04718c7e7eb83e0c";
         let public_key = sk_to_pk(hex_string_to_big_int(secret));
 
-
         assert_eq!(
             public_key,
             hex!("97d5726528eef5a2da8aa09bee99b04fbb3f3b7893a2988e42bfeb5af1163525c9d3832bed9e5237885339ff48d6c9fa")
@@ -593,6 +595,7 @@ mod test {
         // Using the mini-app at the bottom of https://paulmillr.com/noble/
         let secret = "f0c5bf519a6ede6be1ab684f6ecc1b129b0fc2ed95bd294bb2967077ae38a378";
         let public_key = sk_to_pk(hex_string_to_big_int(secret));
+
         assert_eq!(
             public_key,
             hex!("855e5129c94bb05d0bcdf0ba1e56750f9fac3da8d272baec0ce3f1fec6f22a91b84b33032a99dee48844feefc37739dc"),
@@ -718,21 +721,9 @@ mod test {
         assert_ne!(p, q);
     }
 
-    // Test helper to get a SecretKey (BigInteger256) from hex strings
+    // Test helper to get a SecretKey (field element) from a hex-encoded string
     fn hex_string_to_big_int(s: &str) -> SecretKey {
         let bytes = hex::decode(s).unwrap();
-        let mut bits = vec![false; 8*bytes.len()];
-        for (i, byte) in bytes.iter().enumerate() {
-            bits[8*i] = byte & 0b10000000 > 0;
-            bits[8*i+1] = byte & 0b01000000 > 0;
-            bits[8*i+2] = byte & 0b00100000 > 0;
-            bits[8*i+3] = byte & 0b00010000 > 0;
-            bits[8*i+4] = byte & 0b00001000 > 0;
-            bits[8*i+5] = byte & 0b00000100 > 0;
-            bits[8*i+6] = byte & 0b00000010 > 0;
-            bits[8*i+7] = byte & 0b00000001 > 0;
-        }
-
-        SecretKey::from_bits_be(&bits)
+        SecretKey::from_be_bytes_mod_order(&bytes)
     }
 }

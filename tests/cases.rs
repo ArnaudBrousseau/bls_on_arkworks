@@ -1,4 +1,4 @@
-use ark_ff::BigInteger;
+use ark_ff::PrimeField;
 use bls_on_arkworks::types::{Octets, SecretKey};
 use std::fs;
 
@@ -275,17 +275,5 @@ fn prefixed_hex_string_to_secret_key(s: &str) -> SecretKey {
     non_prefixed.remove(0);
 
     let bytes = hex::decode(non_prefixed).unwrap();
-    let mut bits = vec![false; 8*bytes.len()];
-    for (i, byte) in bytes.iter().enumerate() {
-        bits[8*i] = byte & 0b10000000 > 0;
-        bits[8*i+1] = byte & 0b01000000 > 0;
-        bits[8*i+2] = byte & 0b00100000 > 0;
-        bits[8*i+3] = byte & 0b00010000 > 0;
-        bits[8*i+4] = byte & 0b00001000 > 0;
-        bits[8*i+5] = byte & 0b00000100 > 0;
-        bits[8*i+6] = byte & 0b00000010 > 0;
-        bits[8*i+7] = byte & 0b00000001 > 0;
-    }
-
-    SecretKey::from_bits_be(&bits)
+    SecretKey::from_be_bytes_mod_order(&bytes)
 }

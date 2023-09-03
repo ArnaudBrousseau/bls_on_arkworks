@@ -6,7 +6,6 @@ use ark_bls12_381::Fq2;
 use ark_bls12_381::{Bls12_381, Fq, Fr};
 use ark_ec::pairing::PairingOutput;
 use ark_ec::short_weierstrass::{Affine, Projective};
-use ark_ff::BigInteger256;
 use hmac::Hmac;
 use sha2::Sha256;
 
@@ -34,7 +33,8 @@ pub type Octets = Vec<u8>;
 
 /// A secret key is an integer between 0 and the base field modulus
 /// In other words: a field element.
-pub type SecretKey = BigInteger256;
+/// To obtain a [`SecretKey`] from bytes, use `SecretKey::from_be_bytes_mod_order(&bytes)`.
+pub type SecretKey = BLSFr;
 
 /// Represents a point in G1
 /// (we're using the "minimal-pubkey-size" variant of the BLS spec)
