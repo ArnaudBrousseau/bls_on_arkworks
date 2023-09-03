@@ -5,7 +5,7 @@ use std::fmt;
 use ark_serialize::SerializationError;
 
 /// Error enum to wrap underlying failures in BLS operations, or wrap errors from dependencies.
-/// Inspired by the excellent https://blog.burntsushi.net/rust-error-handling
+/// Inspired by this excellent post: <https://blog.burntsushi.net/rust-error-handling>
 #[derive(Debug)]
 pub enum BLSError {
     /// Happens when the infinity bit is set in an encoding point, but the rest of the bytes aren't correctly zero'd
