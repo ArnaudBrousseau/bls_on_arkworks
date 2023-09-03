@@ -1,5 +1,7 @@
 //! Error enum to wrap underlying failures
+#[cfg(feature = "std")]
 use std::error::Error;
+#[cfg(feature = "std")]
 use std::fmt;
 
 use ark_serialize::SerializationError;
@@ -21,8 +23,10 @@ pub enum BLSError {
     WrongSizeForPublicKey(usize),
 }
 
+#[cfg(feature = "std")]
 impl Error for BLSError {}
 
+#[cfg(feature = "std")]
 impl fmt::Display for BLSError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
