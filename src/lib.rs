@@ -20,6 +20,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
+use alloc::vec;
 use core::ops::{Add, AddAssign};
 
 use ark_bls12_381::g2::Config as G2Config;

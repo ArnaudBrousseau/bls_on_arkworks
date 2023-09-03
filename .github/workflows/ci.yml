@@ -31,4 +31,9 @@ jobs:
       - name: Run Tests
         run: |
           cargo check
-          cargo test --all          
+          cargo test --all
+
+      - name: Build with --no-default-features
+        run: |
+          cargo check --no-default-features
+          cargo build --no-default-features
