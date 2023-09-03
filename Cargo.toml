@@ -1,14 +1,14 @@
 [package]
 name = "bls_on_arkworks"
 description = "A rust crate implementing the latest IETF draft for BLS signatures on top of the Arkworks ecosystem"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/ArnaudBrousseau/bls_on_arkworks"
 readme = "README.md"
 homepage = "https://github.com/ArnaudBrousseau/bls_on_arkworks"
 keywords = ["cryptography", "BLS", "BLS12381", "ethereum", "signature"]
-categories = ["cryptography"]
+categories = ["cryptography", "no_std"]
 
 [dependencies]
 ark-ff = { version = "0.4.2", default-features = false }
