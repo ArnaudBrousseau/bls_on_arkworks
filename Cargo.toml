@@ -8,7 +8,7 @@ repository = "https://github.com/ArnaudBrousseau/bls_on_arkworks"
 readme = "README.md"
 homepage = "https://github.com/ArnaudBrousseau/bls_on_arkworks"
 keywords = ["cryptography", "BLS", "BLS12381", "ethereum", "signature"]
-categories = ["cryptography", "no_std"]
+categories = ["cryptography", "no-std"]
 
 [dependencies]
 ark-ff = { version = "0.4.2", default-features = false }
