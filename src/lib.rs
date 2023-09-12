@@ -525,6 +525,7 @@ pub fn os2ip(octets: &Octets) -> SecretKey {
 #[cfg(test)]
 mod test {
     use super::*;
+    use ark_ff::BigInteger;
     use hex::ToHex;
     use hex_literal::hex;
     use num_bigint::BigInt;
@@ -742,9 +743,31 @@ mod test {
         assert_ne!(p, q);
     }
 
+    #[test]
+    fn test_os2ip_performs_reduction_modulo_p() {
+        // Obtained from https://github.com/arkworks-rs/curves/blob/8765798eb08d3dafc3f9362a12170ad0265ca6af/bls12_381/src/fields/fr.rs#L4
+        // then converted from decimal to hex using https://www.rapidtables.com/convert/number/decimal-to-hex.html
+        let field_modulus =
+            hex::decode("73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001")
+                .unwrap();
+        // Ensures that os2ip is performing proper reduction modulo p
+        assert!(os2ip(&field_modulus).is_zero());
+    }
+
+    #[test]
+    fn test_os2ip_parses_large_ints_correctly() {
+        // Subtract one from the field modulus (easy given the modulus ends in 0000001!) and compare the result of os2ip to hardcoded big ints from arkworks.
+        let field_modulus_minus_one =
+            hex::decode("73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000000")
+                .unwrap();
+        let mut expected = BLSFr::MODULUS;
+        expected.sub_with_borrow(&BigInteger256::one());
+
+        assert_eq!(os2ip(&field_modulus_minus_one).into_bigint(), expected,);
+    }
+
     // Test helper to get a SecretKey (field element) from a hex-encoded string
     fn hex_string_to_big_int(s: &str) -> SecretKey {
-        let bytes = hex::decode(s).unwrap();
-        SecretKey::from_be_bytes_mod_order(&bytes)
+        os2ip(&hex::decode(s).unwrap())
     }
 }

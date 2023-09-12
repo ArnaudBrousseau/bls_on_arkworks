@@ -1,5 +1,7 @@
-use ark_ff::PrimeField;
-use bls_on_arkworks::types::{Octets, SecretKey};
+use bls_on_arkworks::{
+    os2ip,
+    types::{Octets, SecretKey},
+};
 use std::fs;
 
 pub fn aggregate() -> Vec<AggregateCase> {
@@ -275,5 +277,5 @@ fn prefixed_hex_string_to_secret_key(s: &str) -> SecretKey {
     non_prefixed.remove(0);
 
     let bytes = hex::decode(non_prefixed).unwrap();
-    SecretKey::from_be_bytes_mod_order(&bytes)
+    os2ip(&bytes)
 }
