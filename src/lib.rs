@@ -229,6 +229,8 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
 /// ([spec link](https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-2.4))
 /// Takes a secret key SK and outputs the corresponding public key PK.
 ///
+/// Use [`keygen`] to generate a brand new secret key, or [`os2ip`] to load known bytes.
+///
 /// Implementation:
 /// ```plain
 ///    1. xP = SK * P
