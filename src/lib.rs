@@ -160,7 +160,11 @@ pub fn signature_to_point(signature: &Signature) -> Result<G2AffinePoint, BLSErr
 }
 
 /// ([spec link](https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-2.3))
-/// Generates a secret key SK deterministically from a secret octet string IKM
+/// Generates a secret key SK deterministically from a secret octet string IKM.
+/// IKM MUST be at least 32 bytes long, but it MAY be longer.
+///
+/// IKM should come from a good source of randomness, such as `rand::rngs::OsRng`.
+/// If you want to load known secret key bytes instead of generating a new key, use [`os2ip`].
 ///
 /// Implementation:
 /// ```plain
@@ -205,13 +209,9 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
         hk.expand(&info, &mut okm).expect("unable to expand HKDF");
 
         // 4
-        // XXX: deviation from the spec here; we don't call our own `OS2IP`.
-        // Arkworks' `from_be_bytes_mod_order` implements the same functionality as
-        // well as proper reduction modulo [`BLSFr::MODULUS`].
-        // To convince yourself, go read the relevant section of the spec:
-        // [here](https://datatracker.ietf.org/doc/html/rfc8017#section-4.2).
+        //
         // `OS2IP` is essentially "deserialize integer from big-endian octets".
-        let sk = BLSFr::from_be_bytes_mod_order(&okm);
+        let sk = os2ip(&okm);
 
         // 5
         if !sk.is_zero() {
@@ -228,6 +228,8 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
 
 /// ([spec link](https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-2.4))
 /// Takes a secret key SK and outputs the corresponding public key PK.
+///
+/// Use [`keygen`] to generate a brand new secret key, or [`os2ip`] to load known bytes.
 ///
 /// Implementation:
 /// ```plain
@@ -514,9 +516,18 @@ fn subgroup_check_e2(p: G2AffinePoint) -> bool {
     p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve() && !p.is_zero()
 }
 
+/// ([spec link](https://www.rfc-editor.org/rfc/rfc8017.html#section-4.2))
+/// Converts an octet string to a nonnegative integer.
+/// This function loads bytes as a big-endian number and returns a valid [`SecretKey`] between 0 and p-1.
+pub fn os2ip(octets: &Octets) -> SecretKey {
+    // Implements the spec functionality as well as proper reduction modulo [`BLSFr::MODULUS`].
+    SecretKey::from_be_bytes_mod_order(octets)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use ark_ff::BigInteger;
     use hex::ToHex;
     use hex_literal::hex;
     use num_bigint::BigInt;
@@ -734,9 +745,31 @@ mod test {
         assert_ne!(p, q);
     }
 
+    #[test]
+    fn test_os2ip_performs_reduction_modulo_p() {
+        // Obtained from https://github.com/arkworks-rs/curves/blob/8765798eb08d3dafc3f9362a12170ad0265ca6af/bls12_381/src/fields/fr.rs#L4
+        // then converted from decimal to hex using https://www.rapidtables.com/convert/number/decimal-to-hex.html
+        let field_modulus =
+            hex::decode("73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001")
+                .unwrap();
+        // Ensures that os2ip is performing proper reduction modulo p
+        assert!(os2ip(&field_modulus).is_zero());
+    }
+
+    #[test]
+    fn test_os2ip_parses_large_ints_correctly() {
+        // Subtract one from the field modulus (easy given the modulus ends in 0000001!) and compare the result of os2ip to hardcoded big ints from arkworks.
+        let field_modulus_minus_one =
+            hex::decode("73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000000")
+                .unwrap();
+        let mut expected = BLSFr::MODULUS;
+        expected.sub_with_borrow(&BigInteger256::one());
+
+        assert_eq!(os2ip(&field_modulus_minus_one).into_bigint(), expected,);
+    }
+
     // Test helper to get a SecretKey (field element) from a hex-encoded string
     fn hex_string_to_big_int(s: &str) -> SecretKey {
-        let bytes = hex::decode(s).unwrap();
-        SecretKey::from_be_bytes_mod_order(&bytes)
+        os2ip(&hex::decode(s).unwrap())
     }
 }

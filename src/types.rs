@@ -33,7 +33,7 @@ pub type Octets = Vec<u8>;
 
 /// A secret key is an integer between 0 and the base field modulus
 /// In other words: a field element.
-/// To obtain a [`SecretKey`] from bytes, use `SecretKey::from_be_bytes_mod_order(&bytes)`.
+/// To obtain a [`SecretKey`] from bytes, use [`super::os2ip`].
 pub type SecretKey = BLSFr;
 
 /// Represents a point in G1
