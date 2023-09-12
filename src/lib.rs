@@ -160,7 +160,11 @@ pub fn signature_to_point(signature: &Signature) -> Result<G2AffinePoint, BLSErr
 }
 
 /// ([spec link](https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-2.3))
-/// Generates a secret key SK deterministically from a secret octet string IKM
+/// Generates a secret key SK deterministically from a secret octet string IKM.
+/// IKM MUST be at least 32 bytes long, but it MAY be longer.
+///
+/// IKM should come from a good source of randomness, such as `rand::rngs::OsRng`.
+/// If you want to load known secret key bytes instead of generating a new key, use [`os2ip`].
 ///
 /// Implementation:
 /// ```plain
