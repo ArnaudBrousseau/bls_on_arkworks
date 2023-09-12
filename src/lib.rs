@@ -205,13 +205,9 @@ pub fn keygen(ikm: &Octets) -> SecretKey {
         hk.expand(&info, &mut okm).expect("unable to expand HKDF");
 
         // 4
-        // XXX: deviation from the spec here; we don't call our own `OS2IP`.
-        // Arkworks' `from_be_bytes_mod_order` implements the same functionality as
-        // well as proper reduction modulo [`BLSFr::MODULUS`].
-        // To convince yourself, go read the relevant section of the spec:
-        // [here](https://datatracker.ietf.org/doc/html/rfc8017#section-4.2).
+        //
         // `OS2IP` is essentially "deserialize integer from big-endian octets".
-        let sk = BLSFr::from_be_bytes_mod_order(&okm);
+        let sk = os2ip(&okm);
 
         // 5
         if !sk.is_zero() {
