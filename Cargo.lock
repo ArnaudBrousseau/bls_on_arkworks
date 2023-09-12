@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "bls_on_arkworks"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "ark-bls12-381",
  "ark-ec",
