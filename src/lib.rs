@@ -514,6 +514,14 @@ fn subgroup_check_e2(p: G2AffinePoint) -> bool {
     p.is_on_curve() && p.is_in_correct_subgroup_assuming_on_curve() && !p.is_zero()
 }
 
+/// ([spec link](https://www.rfc-editor.org/rfc/rfc8017.html#section-4.2))
+/// Converts an octet string to a nonnegative integer.
+/// This function loads bytes as a big-endian number and returns a valid [`SecretKey`] between 0 and p-1.
+pub fn os2ip(octets: &Octets) -> SecretKey {
+    // Implements the spec functionality as well as proper reduction modulo [`BLSFr::MODULUS`].
+    SecretKey::from_be_bytes_mod_order(octets)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
