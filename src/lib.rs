@@ -527,6 +527,7 @@ pub fn os2ip(octets: &Octets) -> SecretKey {
 #[cfg(test)]
 mod test {
     use super::*;
+    use ark_ec::CurveGroup;
     use ark_ff::BigInteger;
     use hex::ToHex;
     use hex_literal::hex;
@@ -771,5 +772,38 @@ mod test {
     // Test helper to get a SecretKey (field element) from a hex-encoded string
     fn hex_string_to_big_int(s: &str) -> SecretKey {
         os2ip(&hex::decode(s).unwrap())
+    }
+
+    // Test for the splitting zero attack
+    // https://eprint.iacr.org/2021/323.pdf
+    #[test]
+    fn test_splitting_zero_aggregate_verify() {
+        // sk1 + sk2 = 0
+        let sk1bytes: [u8; 32] = [
+            99, 64, 58, 175, 15, 139, 113, 184, 37, 222, 127, 204, 233, 209, 34, 8, 61, 27, 85,
+            251, 68, 31, 255, 214, 8, 189, 190, 71, 198, 16, 210, 91,
+        ];
+        let sk2bytes: [u8; 32] = [
+            16, 173, 108, 164, 26, 18, 11, 144, 13, 91, 88, 59, 31, 208, 181, 253, 22, 162, 78, 7,
+            187, 222, 92, 40, 247, 66, 65, 183, 57, 239, 45, 166,
+        ];
+        let mut sigbytes: [u8; 96] = [0; 96];
+        sigbytes[0] = 192;
+
+        let pk1 = pubkey_to_point(&sk_to_pk(os2ip(&sk1bytes.to_vec()))).unwrap();
+        let pk2 = pubkey_to_point(&sk_to_pk(os2ip(&sk2bytes.to_vec()))).unwrap();
+        let aggregate = (pk1 + pk2).into_affine();
+
+        assert!(aggregate.is_zero()); // point at infinity
+
+        let pk = point_to_pubkey(aggregate);
+        let message = b"random_message".to_vec();
+
+        assert!(!verify(
+            &pk,
+            &message,
+            &sigbytes.to_vec(),
+            &DST_ETHEREUM.as_bytes().to_vec()
+        ));
     }
 }
